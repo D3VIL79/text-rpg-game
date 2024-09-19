@@ -1,0 +1,169 @@
+import random
+
+# Character Class
+class Character:
+    def __init__(self, name, hp, attack, defense, level=1, experience=0):
+        self.name = name
+        self.hp = hp
+        self.max_hp = hp
+        self.attack = attack
+        self.defense = defense
+        self.level = level
+        self.experience = experience
+        self.exp_to_level_up = 20  # Initial experience to level up
+        self.stat_points = 0
+        self.inventory = {}
+
+    def attack_enemy(self, enemy):
+        damage = self.attack - enemy.defense
+        if damage > 0:
+            enemy.hp -= damage
+            print(f"{self.name} attacked {enemy.name} for {damage} damage!")
+        else:
+            print(f"{self.name}'s attack was too weak to hurt {enemy.name}.")
+    
+    def take_damage(self, damage):
+        self.hp -= damage
+        if self.hp <= 0:
+            print(f"{self.name} has been defeated.")
+        else:
+            print(f"{self.name} now has {self.hp}/{self.max_hp} HP remaining.")
+    
+    def heal(self, item):
+        if item in self.inventory and self.inventory[item]['quantity'] > 0:
+            healing_amount = self.inventory[item]['heal']
+            self.hp = min(self.max_hp, self.hp + healing_amount)
+            print(f"{self.name} healed {healing_amount} HP!")
+            self.inventory[item]['quantity'] -= 1
+        else:
+            print(f"No {item} left to use.")
+    
+    def add_to_inventory(self, item, quantity=1, heal=0):
+        if item in self.inventory:
+            self.inventory[item]['quantity'] += quantity
+        else:
+            self.inventory[item] = {'quantity': quantity, 'heal': heal}
+    
+    def level_up(self):
+        self.level += 1
+        self.max_hp = int(self.max_hp * 1.5)  # Increase max HP by 1.5 times
+        self.hp = self.max_hp  # Restore HP to max after leveling up
+        self.attack += 2
+        self.defense += 1
+        self.stat_points += 2  # Gain 2 stat points to distribute
+        self.exp_to_level_up *= 2  # Double experience required for next level
+        
+        print(f"{self.name} leveled up to Level {self.level}!")
+        print(f"Max HP increased to {self.max_hp}!")
+        print(f"You have {self.stat_points} stat points to distribute.")
+        self.allocate_stat_points()
+
+    def allocate_stat_points(self):
+        while self.stat_points > 0:
+            print(f"Remaining stat points: {self.stat_points}")
+            choice = input("Which stat would you like to increase? (H)P, (A)ttack, (D)efense: ").lower()
+            if choice == 'h':
+                self.max_hp += 10
+                print(f"Max HP increased by 10. New Max HP: {self.max_hp}")
+            elif choice == 'a':
+                self.attack += 1
+                print(f"Attack increased by 1. New Attack: {self.attack}")
+            elif choice == 'd':
+                self.defense += 1
+                print(f"Defense increased by 1. New Defense: {self.defense}")
+            else:
+                print("Invalid choice. Please try again.")
+                continue
+            self.stat_points -= 1
+
+    def show_stats(self):
+        print(f"\n{self.name}'s Stats:")
+        print(f"Level: {self.level}")
+        print(f"HP: {self.hp}/{self.max_hp}")
+        print(f"Attack: {self.attack}")
+        print(f"Defense: {self.defense}")
+        print(f"Experience: {self.experience}/{self.exp_to_level_up} XP")
+        print(f"Stat Points: {self.stat_points}")
+
+# Enemy Class
+class Enemy:
+    def __init__(self, name, level):
+        self.name = name
+        self.level = level
+        self.hp = 20 + 10 * level
+        self.attack = 5 + 2 * level
+        self.defense = 2 + level
+
+    def attack_player(self, player):
+        damage = self.attack - player.defense
+        player.take_damage(max(damage, 0))
+    
+    def take_damage(self, damage):
+        self.hp -= damage
+        if self.hp <= 0:
+            print(f"{self.name} has been defeated.")
+        else:
+            print(f"{self.name} now has {self.hp} HP remaining.")
+
+def combat(player, enemy):
+    print(f"\nA wild {enemy.name} (Level {enemy.level}) has appeared!")
+    while enemy.hp > 0 and player.hp > 0:
+        print(f"\n{player.name}'s HP: {player.hp}/{player.max_hp}")
+        print(f"{enemy.name}'s HP: {enemy.hp}")
+        
+        action = input("Choose an action: (A)ttack, (H)eal, (R)un, (S)tat: ").lower()
+        if action == 'a':
+            player.attack_enemy(enemy)
+            if enemy.hp > 0:
+                enemy.attack_player(player)
+        elif action == 'h':
+            item = input("Choose a healing item from your inventory: ")
+            player.heal(item)
+        elif action == 'r':
+            if random.random() > 0.5:
+                print("You successfully ran away!")
+                break
+            else:
+                print("You failed to run away!")
+                enemy.attack_player(player)
+        elif action == 's':
+            player.show_stats()
+
+        # Enemy attacks back if not defeated
+        if enemy.hp > 0 and action != 'r':
+            damage = enemy.attack - player.defense
+            player.take_damage(max(damage, 0))
+    
+    if player.hp > 0 and enemy.hp <= 0:
+        print(f"{player.name} defeated {enemy.name}!")
+        experience_gained = random.randint(10, 20)
+        print(f"{player.name} gained {experience_gained} experience!")
+        player.experience += experience_gained
+        
+        if player.experience >= player.exp_to_level_up:
+            player.level_up()
+
+def main():
+    # Create Player
+    player_name = input("Enter your character's name: ")
+    player = Character(player_name, hp=50, attack=10, defense=5)
+    
+    # Add some items to inventory
+    player.add_to_inventory("Potion", quantity=5, heal=20)
+    
+    # Game loop
+    while player.hp > 0:
+        enemy = Enemy(name="Monster", level=player.level)
+        combat(player, enemy)
+        
+        # Check if the player wants to keep playing
+        if player.hp > 0:
+            keep_playing = input("Do you want to keep adventuring? (Y/N): ").lower()
+            if keep_playing != 'y':
+                print(f"{player.name}'s adventure ends here.")
+                break
+        else:
+            print(f"{player.name} has been defeated. Game over.")
+
+if __name__ == "__main__":
+    main()
